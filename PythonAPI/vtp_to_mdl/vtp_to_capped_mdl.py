@@ -1,24 +1,29 @@
 """Combined VTP -> capped MDL, driven by an existing mesh-surfaces/ partition.
 
-Run with SimVascular's bundled Python:
+Requires Python with the `vtk` package installed.
+
+The script does not depend on the SimVascular Python API (`sv`) and can be
+run in any Python environment with VTK available. Using SimVascular's bundled
+Python may still be convenient because it already includes VTK.
 
 MacBook example:
   /Applications/SimVascular.app/Contents/Resources/simvascular --python -- \
-      vtp_to_capped_mdl.py --vtp mesh_name.vtp --surfaces mesh_name-mesh-surfaces \
-      --out mesh_name.mdl --out-vtp mesh_name.vtp
+      vtp_to_capped_mdl.py --mesh-exterior mesh.exterior.vtp --mesh-surfaces-dir mesh-surfaces \
+      --model-name model
 
 Linux example:
   /usr/local/sv/2025-12-21/simvascular --python -- \
-      vtp_to_capped_mdl.py --vtp mesh_name.vtp --surfaces mesh_name-mesh-surfaces \
-      --out mesh_name.mdl --out-vtp mesh_name.vtp
+      vtp_to_capped_mdl.py --mesh-exterior mesh.exterior.vtp --mesh-surfaces-dir mesh-surfaces \
+      --model-name model
 
-Authors: Jeff B. Li, Chloe Choi, Claude, ChatGPT
+Alternatively, if you have a Python environment with VTK set up, you can run the script directly:
+  python vtp_to_capped_mdl.py \
+    --mesh-exterior mesh.exterior.vtp --mesh-surfaces-dir mesh-surfaces --model-name model
 """
 import argparse
 import os
 import sys
 import xml.etree.ElementTree as ET
-
 import vtk
 
 FACE_ID_ARRAY_NAME = "ModelFaceID"
@@ -217,16 +222,16 @@ def build_mdl_tree(faces):
     return ET.ElementTree(root), caps, walls
 
 
-def main(vtp_path, surfaces_dir, mdl_out, vtp_out, merge_walls):
+def main(mesh_exterior_path, mesh_surfaces_dir, mdl_out, vtp_out, merge_walls):
     print("--- Starting Processing ---")
-    print(f"Main VTP:     {vtp_path}")
-    print(f"Surfaces Dir: {surfaces_dir}")
+    print(f"Mesh Exterior: {mesh_exterior_path}")
+    print(f"Mesh Surfaces Dir: {mesh_surfaces_dir}")
     print(f"Merge walls:  {merge_walls}")
 
-    faces = group_faces(surfaces_dir, merge_walls)
-    triple_to_face = build_triple_map(surfaces_dir, faces)
+    faces = group_faces(mesh_surfaces_dir, merge_walls)
+    triple_to_face = build_triple_map(mesh_surfaces_dir, faces)
 
-    global_pd = load_vtp(vtp_path)
+    global_pd = load_vtp(mesh_exterior_path)
     unmatched = label_model(global_pd, triple_to_face)
     print(f"Model cells: {global_pd.GetNumberOfCells()}, unmatched: {unmatched}")
     if unmatched:
@@ -250,17 +255,16 @@ if __name__ == "__main__":
         description="Generate a capped SimVascular .mdl + labeled .vtp from a "
                     "model VTP and a mesh-surfaces/ folder, assigning faces "
                     "exactly from the surface partition (no feature angle).")
-    parser.add_argument("--vtp", required=True, help="Path to model .vtp")
-    parser.add_argument("--surfaces", required=True,
+    parser.add_argument("--mesh-exterior", required=True, help="Path to mesh exterior .vtp")
+    parser.add_argument("--mesh-surfaces-dir", required=True,
                         help="Path to mesh-surfaces/ folder")
-    parser.add_argument("--out", required=True, help="Path to output .mdl")
-    parser.add_argument("--out-vtp", dest="out_vtp", default=None,
-                        help="Path to output labeled .vtp "
-                             "(default: <out>.vtp next to the .mdl)")
+    parser.add_argument("--model-name", required=True,
+                        help="Base output model name, without .mdl or .vtp")
     parser.add_argument("--merge-walls", action="store_true",
                         help="Collapse all wall_* / wall_blend_* files into a "
                              "single 'wall' face. Default: each surface file "
                              "is its own face.")
-    args = parser.parse_args()
-    out_vtp = args.out_vtp or os.path.splitext(args.out)[0] + ".vtp"
-    main(args.vtp, args.surfaces, args.out, out_vtp, args.merge_walls)
+    args    = parser.parse_args()
+    mdl_out = args.model_name + ".mdl"
+    out_vtp = args.model_name + ".vtp"
+    main(args.mesh_exterior, args.mesh_surfaces_dir, mdl_out, out_vtp, args.merge_walls)
