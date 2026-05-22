@@ -17,7 +17,11 @@ After the script is run, put both in your SimVascular project's `Models/` direct
 
 ## Run
 
-Must run inside SimVascular's bundled Python (the libraries are not pip-installable). On macOS:
+The script does not depend on the SimVascular Python API (`sv`) and can be
+run in any Python environment with VTK available. Using SimVascular's bundled
+Python may still be convenient because it already includes VTK.
+
+On macOS:
 
 ```bash
 /Applications/SimVascular.app/Contents/Resources/simvascular --python -- \
@@ -37,6 +41,12 @@ Or on Linux:
 ```
 
 Use the `Resources/simvascular` wrapper, not the `bin/simvascular` binary directly — the wrapper sets `DYLD_LIBRARY_PATH` so `lib_simvascular_post.dylib` resolves. On Linux/Windows: substitute the equivalent `simvascular` launcher from your install.
+
+Alternatively, if you have a Python environment with VTK set up, you can run the script directly:
+```
+python vtp_to_capped_mdl.py \
+    --mesh-exterior mesh.exterior.vtp --mesh-surfaces-dir mesh-surfaces --model-name model
+```
 
 ## Arguments
 
